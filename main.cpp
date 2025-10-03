@@ -34,6 +34,11 @@ public:
         UnloadImage(platform);
     }
 
+    ~Platform()
+    {
+        // UnloadTexture(platformTexture);
+    }
+
     void Draw()
     {
         DrawTexture(platformTexture, position.x, position.y, WHITE);
@@ -46,8 +51,8 @@ public:
     Image doodle;
     Texture2D doodleTexture;
     Vector2 position = {200, 300};
-    float dY = 0;
-    bool isFalling = false;
+    float dY = 5;
+    bool isFalling = true;
 
     Doodle()
     {
@@ -67,63 +72,68 @@ public:
     }
 };
 
-int main()
+class Game
 {
-    srand(time(0));
-
-    InitWindow(screenWidth, screenHeight, "Doodle Jump");
-    SetTargetFPS(60);
-
+public:
+    Doodle doodle = Doodle();
     std::vector<Platform> platVec;
 
-    Doodle doodle = Doodle();
-    for (int i = 0; i < 10; ++i)
+    void initPlatforms()
     {
-        float randX = rand() % screenWidth;
-        float randY = rand() % screenHeight;
-        platVec.push_back(Platform(randX, randY));
-    }
-
-    while (WindowShouldClose() == false)
-    {
-        BeginDrawing();
-        ClearBackground(blue);
         for (int i = 0; i < 10; ++i)
         {
-            platVec[i].Draw();
+            float randX = rand() % screenWidth;
+            float randY = rand() % screenHeight;
+            platVec.push_back(Platform(randX, randY));
         }
-        doodle.dY += 0.1;
-        doodle.position.y += doodle.dY;
-        if (doodle.position.y < 400)
-        {
+    }
 
-            for (int i = 0; i < 10; ++i)
-            {
-                platVec[i].position.y -= doodle.dY;
-            }
-        }
-        if (doodle.position.y > screenHeight)
+    void movePlatforms()
+    {
+        for (int i = 0; i < 10; ++i)
         {
-            for (int i = 0; i < 10; ++i)
+            if (platVec[i].position.y > screenHeight)
             {
                 platVec[i].position.y = 0;
                 platVec[i].position.x = rand() % screenWidth;
             }
         }
+    }
 
+    void spawnNewPlatforms()
+    {
+        if (doodle.position.y < 450)
+        {
+            for (int i = 0; i < 10; ++i)
+            {
+                platVec[i].position.y -= doodle.dY;
+            }
+        }
+    }
+
+    void objectCollision()
+    {
+        Rectangle doodleRect = {doodle.position.x, doodle.position.y, 100, 100};
         for (int i = 0; i < 10; ++i)
         {
-            Rectangle doodleRect = {doodle.position.x, doodle.position.y, 100, 100};
             Rectangle platRect = {platVec[i].position.x, platVec[i].position.y, 90, 20};
             if (CheckCollisionRecs(doodleRect, platRect))
             {
-                doodle.dY -= 2;
+                if (doodle.position.y + 100 <= platVec[i].position.y + doodle.dY)
+                {
+                    doodle.dY = -10;
+                    doodle.position.y -= 10;
+                    doodle.position.y = platVec[i].position.y - 100;
+                    std::cout << "X: " << doodle.position.x << " Y: " << doodle.position.y << std::endl;
+                    doodle.isFalling = false;
+                    break;
+                }
             }
         }
-        if (doodle.position.y > 600)
-        {
-            doodle.dY -= 2;
-        }
+    }
+
+    void doodleMovement()
+    {
         if (doodle.position.x > screenWidth)
         {
             doodle.position.x = -100;
@@ -132,15 +142,55 @@ int main()
         {
             doodle.position.x = screenWidth;
         }
+    }
+
+    void Update()
+    {
+        std::cout << doodle.isFalling << std::endl;
+        if (doodle.isFalling)
+        {
+            objectCollision();
+        }
+        std::cout << doodle.isFalling << std::endl;
+        doodleMovement();
+        doodle.position.y += doodle.dY;
+        doodle.Draw();
+        for (int i = 0; i < 10; ++i)
+        {
+            platVec[i].Draw();
+        }
+        std::cout << "dY: " << doodle.dY << std::endl;
+    }
+};
+
+int main()
+{
+    srand(time(0));
+
+    InitWindow(screenWidth, screenHeight, "Doodle Jump");
+    SetTargetFPS(60);
+
+    Game game = Game();
+
+    game.initPlatforms();
+
+    while (WindowShouldClose() == false)
+    {
+        BeginDrawing();
+        ClearBackground(blue);
+
+        game.spawnNewPlatforms();
+        game.movePlatforms();
+
         if (IsKeyDown(KEY_A))
         {
-            doodle.position.x -= 5;
+            game.doodle.position.x -= 5;
         }
         if (IsKeyDown(KEY_D))
         {
-            doodle.position.x += 5;
+            game.doodle.position.x += 5;
         }
-        doodle.Draw();
+        game.Update();
         EndDrawing();
     }
     CloseWindow();
